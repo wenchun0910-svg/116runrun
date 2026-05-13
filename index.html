@@ -162,23 +162,28 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, serverTimestamp, doc, setDoc, getDoc, onSnapshot, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Firebase Configuration (from environment variables)
-        let firebaseConfig = {};
-        try {
-         const firebaseConfig = {
-  apiKey: "AIzaSyB9B6dUshoaUsQdtoUBdvjV5b8wWFv_bN0",
+        // =========================================================================
+        // ⚠️ 重要設定：請將下方的 firebaseConfig 替換為您自己的 Firebase 專案設定！
+        // =========================================================================
+        let firebaseConfig = {
+           apiKey: "AIzaSyB9B6dUshoaUsQdtoUBdvjV5b8wWFv_bN0",
   authDomain: "runrun-d7ec5.firebaseapp.com",
   projectId: "runrun-d7ec5",
   storageBucket: "runrun-d7ec5.firebasestorage.app",
   messagingSenderId: "845248945796",
-  appId: "1:845248945796:web:04dc1860afb29a47d66cd1"
-};
+  appId: "1:845248945796:web:04dc1860afb29a47d66cd1"                       // 請替換
+        };
 
+        // 嘗試從環境變數載入 (為了相容協作平台環境)，如果在本地端執行會失敗並採用上方您設定的設定檔
+        try {
+            if (typeof __firebase_config !== 'undefined') {
+                firebaseConfig = JSON.parse(__firebase_config);
+            }
         } catch (e) {
-            console.warn("無法解析 __firebase_config，使用本地模式。");
+            console.warn("無法解析環境變數，使用手動設定的 firebaseConfig。");
         }
         
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'changan-ironman'; // 本地端給一個預設 appId
 
         let app, auth, db;
         let isFirebaseReady = false;
