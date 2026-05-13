@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>長安小鐵人計時表</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #F5F5DC; /* 米白底色 */
+            background-image: url('data:image/svg+xml;utf8,<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="2" cy="2" r="1" fill="%23e0e0d1"/></svg>');
+        }
+        /* 自定義捲軸 */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #c1bca0; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a39e82; }
+    </style>
+</head>
+<body class="min-h-screen text-gray-800 p-4 md:p-8 flex flex-col items-center">
+
+    <div class="w-full max-w-5xl bg-white/90 backdrop-blur-sm shadow-xl rounded-2xl overflow-hidden border border-[#e8e4c9]">
+        <!-- Header -->
+        <header class="relative bg-[#8B5A2B] text-white p-6 text-center border-b-4 border-[#A0522D]">
+            <h1 class="text-3xl font-bold tracking-widest" id="mainTitle">長安小鐵人計時表</h1>
+            <p class="text-sm mt-2 opacity-80" id="statusMessage">系統連線中...</p>
+            <button id="adminLoginBtn" class="absolute top-4 right-4 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition" title="管理員登入">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            </button>
+        </header>
+
+        <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Left Column: Controls & Timer -->
+            <div class="space-y-6 md:col-span-1 border-r border-gray-200 pr-0 md:pr-6">
+                <!-- 班級人數設定 -->
+                <div class="bg-[#fdfbf2] p-4 rounded-xl border border-[#e8e4c9] shadow-sm">
+                    <label for="studentCountInput" class="block text-sm font-semibold text-[#8B5A2B] mb-2">設定班級人數</label>
+                    <div class="flex gap-2">
+                        <input type="number" id="studentCountInput" min="1" max="100" class="flex-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6B8E23] text-center text-lg" placeholder="例如: 30">
+                        <button id="generateBtn" class="bg-[#6B8E23] hover:bg-[#55701c] text-white px-4 py-2 rounded-lg font-medium transition duration-200 shadow-sm whitespace-nowrap">確定</button>
+                    </div>
+                </div>
+
+                <!-- 計時器 -->
+                <div class="bg-[#fdfbf2] p-6 rounded-xl border border-[#e8e4c9] shadow-sm flex flex-col items-center justify-center space-y-4">
+                    <div class="text-5xl font-mono font-bold text-[#4a4a4a] tracking-wider" id="timerDisplay">00:00</div>
+                    <button id="toggleTimerBtn" class="w-full py-3 rounded-full text-white font-bold text-lg shadow-md transition-all duration-300 transform hover:scale-105 bg-[#CD5C5C] hover:bg-[#b04a4a]">
+                        計時開始
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Column: Student Buttons -->
+            <div class="md:col-span-2">
+                <h2 class="text-xl font-bold text-[#8B5A2B] mb-4 border-b-2 border-[#8B5A2B] pb-2 inline-block">學生座號</h2>
+                <p id="instructionText" class="text-gray-500 text-sm mb-4">請先於左側輸入人數並點擊確定。</p>
+                <div id="studentButtonsContainer" class="flex flex-wrap gap-4">
+                    <!-- Buttons will be generated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom: Results Table -->
+        <div class="p-6 bg-gray-50 border-t border-gray-200">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 space-y-4 sm:space-y-0">
+                <h2 class="text-xl font-bold text-[#8B5A2B]">成績記錄表</h2>
+                <div class="space-x-2 flex">
+                    <button id="exportBtn" class="bg-[#4682B4] hover:bg-[#36648b] text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm hidden">下載 Excel</button>
+                    <button id="resetBtn" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">重置所有資料</button>
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto bg-white rounded-lg shadow border border-gray-200">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-[#e8e4c9] text-[#8B5A2B]">
+                            <th class="p-3 border-b border-gray-300 font-semibold w-24 text-center">座號</th>
+                            <th class="p-3 border-b border-gray-300 font-semibold">記錄時間</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsTableBody">
+                        <tr>
+                            <td colspan="2" class="p-4 text-center text-gray-400">目前尚無記錄</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for messages -->
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full mx-4 transform scale-95 transition-transform duration-300" id="modalContent">
+            <h3 class="text-lg font-bold text-gray-900 mb-2" id="modalTitle">訊息</h3>
+            <p class="text-gray-600 mb-6" id="modalMessage">內容</p>
+            <div class="flex justify-end">
+                <button id="modalCloseBtn" class="bg-[#8B5A2B] text-white px-4 py-2 rounded-lg hover:bg-[#6e4620] transition">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Login Modal -->
+    <div id="adminLoginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full mx-4 transform scale-95 transition-transform duration-300" id="adminLoginContent">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">管理員登入</h3>
+            <input type="password" id="adminPasswordInput" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8B5A2B] mb-4" placeholder="請輸入密碼 (預設: admin)">
+            <div class="flex justify-end space-x-2">
+                <button id="adminLoginCancelBtn" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition">取消</button>
+                <button id="adminLoginConfirmBtn" class="bg-[#8B5A2B] text-white px-4 py-2 rounded-lg hover:bg-[#6e4620] transition">登入</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard Modal -->
+    <div id="adminDashboardModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-4xl w-full mx-4 transform scale-95 transition-transform duration-300 max-h-[90vh] flex flex-col" id="adminDashboardContent">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-[#8B5A2B]">管理員後台</h3>
+                <button id="adminDashboardCloseBtn" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            
+            <div class="overflow-y-auto pr-2 flex-1 space-y-8">
+                <!-- 設定標題 -->
+                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <h4 class="font-bold text-lg mb-2">系統設定</h4>
+                    <label class="block text-sm text-gray-600 mb-1">更改系統標題</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="appTitleInput" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8B5A2B]" placeholder="輸入新標題">
+                        <button id="saveTitleBtn" class="bg-[#6B8E23] hover:bg-[#55701c] text-white px-4 py-2 rounded-lg transition whitespace-nowrap">儲存標題</button>
+                    </div>
+                </div>
+
+                <!-- 歷史成績管理 -->
+                <div>
+                    <h4 class="font-bold text-lg mb-2">歷史成績管理</h4>
+                    <div class="overflow-x-auto bg-white rounded-lg shadow border border-gray-200">
+                        <table class="w-full text-left border-collapse min-w-[600px]">
+                            <thead>
+                                <tr class="bg-[#e8e4c9] text-[#8B5A2B]">
+                                    <th class="p-3 border-b border-gray-300 font-semibold w-48">記錄時間</th>
+                                    <th class="p-3 border-b border-gray-300 font-semibold w-24">人數</th>
+                                    <th class="p-3 border-b border-gray-300 font-semibold">成績預覽 (前3筆)</th>
+                                    <th class="p-3 border-b border-gray-300 font-semibold w-32 text-center">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminRecordsTableBody">
+                                <tr><td colspan="4" class="p-4 text-center text-gray-400">載入中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, serverTimestamp, doc, setDoc, getDoc, onSnapshot, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Configuration (from environment variables)
+        let firebaseConfig = {};
+        try {
+            firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        } catch (e) {
+            console.warn("無法解析 __firebase_config，使用本地模式。");
+        }
+        
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        let app, auth, db;
+        let isFirebaseReady = false;
+        let currentUser = null;
+
+        // DOM Elements
+        const studentCountInput = document.getElementById('studentCountInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const studentButtonsContainer = document.getElementById('studentButtonsContainer');
+        const instructionText = document.getElementById('instructionText');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const toggleTimerBtn = document.getElementById('toggleTimerBtn');
+        const resultsTableBody = document.getElementById('resultsTableBody');
+        const exportBtn = document.getElementById('exportBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const statusMessage = document.getElementById('statusMessage');
+
+        // Modal Elements
+        const modal = document.getElementById('modal');
+        const modalContent = document.getElementById('modalContent');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalCloseBtn = document.getElementById('modalCloseBtn');
+
+        // Admin DOM Elements
+        const mainTitle = document.getElementById('mainTitle');
+        const adminLoginBtn = document.getElementById('adminLoginBtn');
+        const adminLoginModal = document.getElementById('adminLoginModal');
+        const adminLoginContent = document.getElementById('adminLoginContent');
+        const adminPasswordInput = document.getElementById('adminPasswordInput');
+        const adminLoginCancelBtn = document.getElementById('adminLoginCancelBtn');
+        const adminLoginConfirmBtn = document.getElementById('adminLoginConfirmBtn');
+        
+        const adminDashboardModal = document.getElementById('adminDashboardModal');
+        const adminDashboardContent = document.getElementById('adminDashboardContent');
+        const adminDashboardCloseBtn = document.getElementById('adminDashboardCloseBtn');
+        const appTitleInput = document.getElementById('appTitleInput');
+        const saveTitleBtn = document.getElementById('saveTitleBtn');
+        const adminRecordsTableBody = document.getElementById('adminRecordsTableBody');
+
+        // State variables
+        let timerInterval;
+        let secondsElapsed = 0;
+        let isRunning = false;
+        let studentRecords = {}; // Format: { "1": ["01:23", "02:45"] }
+        let currentStudentCount = 0;
+
+        // --- Firebase Initialization ---
+        async function initFirebase() {
+            if (Object.keys(firebaseConfig).length === 0) {
+                statusMessage.textContent = "僅本地模式 (無資料庫連線)";
+                return;
+            }
+
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // Authentication
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                // Listen for auth state changes
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        currentUser = user;
+                        isFirebaseReady = true;
+                        statusMessage.textContent = "已連線至雲端資料庫";
+                        loadUserPreferences(); 
+                        listenToAppSettings(); // 載入標題設定
+                    } else {
+                        currentUser = null;
+                        isFirebaseReady = false;
+                        statusMessage.textContent = "未登入資料庫";
+                    }
+                });
+
+            } catch (error) {
+                console.error("Firebase 初始化失敗:", error);
+                statusMessage.textContent = "資料庫連線失敗";
+            }
+        }
+
+        // --- User Preferences (Load/Save) ---
+        async function loadUserPreferences() {
+            if (!isFirebaseReady || !currentUser) return;
+            try {
+                const prefDocRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'preferences', 'main');
+                const docSnap = await getDoc(prefDocRef);
+                if (docSnap.exists() && docSnap.data().studentCount) {
+                    studentCountInput.value = docSnap.data().studentCount;
+                }
+            } catch (error) {
+                console.error("載入設定失敗:", error);
+            }
+        }
+
+        async function saveUserPreference(count) {
+            if (!isFirebaseReady || !currentUser) return;
+            try {
+                const prefDocRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'preferences', 'main');
+                await setDoc(prefDocRef, { studentCount: count }, { merge: true });
+            } catch (error) {
+                console.error("儲存設定失敗:", error);
+            }
+        }
+
+        // --- Admin Functions ---
+        const ADMIN_PASSWORD = "admin"; // 預設管理員密碼
+
+        function listenToAppSettings() {
+            if (!isFirebaseReady) return;
+            const settingsRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_settings', 'config');
+            onSnapshot(settingsRef, (docSnap) => {
+                if (docSnap.exists() && docSnap.data().title) {
+                    mainTitle.textContent = docSnap.data().title;
+                    document.title = docSnap.data().title;
+                    appTitleInput.value = docSnap.data().title;
+                }
+            }, (error) => {
+                console.error("監聽標題失敗:", error);
+            });
+        }
+
+        async function saveNewTitle() {
+            const newTitle = appTitleInput.value.trim();
+            if (!newTitle) {
+                showModal("提示", "標題不能為空！");
+                return;
+            }
+            try {
+                const settingsRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_settings', 'config');
+                await setDoc(settingsRef, { title: newTitle }, { merge: true });
+                showModal("成功", "標題已更新！");
+            } catch (error) {
+                console.error("更新標題失敗:", error);
+                showModal("錯誤", "更新標題失敗！");
+            }
+        }
+
+        async function loadAdminRecords() {
+            if (!isFirebaseReady) return;
+            adminRecordsTableBody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-500">載入中...</td></tr>';
+            try {
+                const recordsRef = collection(db, 'artifacts', appId, 'public', 'data', 'running_records');
+                const snapshot = await getDocs(recordsRef);
+                
+                if (snapshot.empty) {
+                    adminRecordsTableBody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-500">目前尚無歷史成績記錄。</td></tr>';
+                    return;
+                }
+
+                let records = [];
+                snapshot.forEach(doc => {
+                    records.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // 依據時間降序排列 (新的在上面)
+                records.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                adminRecordsTableBody.innerHTML = '';
+                records.forEach(record => {
+                    // 將 record.records 轉換為 JSON 字符串，以便傳遞給 onclick 函數
+                    const recordsJson = JSON.stringify(record.records).replace(/"/g, '&quot;');
+                    
+                    const tr = document.createElement('tr');
+                    tr.className = "border-b border-gray-100 hover:bg-gray-50";
+                    
+                    const dateObj = new Date(record.date);
+                    const dateStr = `${dateObj.getFullYear()}/${String(dateObj.getMonth()+1).padStart(2,'0')}/${String(dateObj.getDate()).padStart(2,'0')} ${String(dateObj.getHours()).padStart(2,'0')}:${String(dateObj.getMinutes()).padStart(2,'0')}`;
+                    const fileDateStr = `${dateObj.getFullYear()}${String(dateObj.getMonth()+1).padStart(2,'0')}${String(dateObj.getDate()).padStart(2,'0')}_${String(dateObj.getHours()).padStart(2,'0')}${String(dateObj.getMinutes()).padStart(2,'0')}`;
+                    
+                    let previewHtml = '';
+                    if (record.records) {
+                        const ids = Object.keys(record.records).sort((a, b) => parseInt(a) - parseInt(b)).slice(0, 3);
+                        previewHtml = ids.map(id => `<span class="text-xs bg-gray-200 text-gray-700 px-1 py-0.5 rounded mr-1 shadow-sm border border-gray-300 inline-block mb-1">${id}號: ${record.records[id][0]}</span>`).join('');
+                        if (Object.keys(record.records).length > 3) previewHtml += '<span class="text-xs text-gray-500 ml-1">...</span>';
+                    }
+
+                    tr.innerHTML = `
+                        <td class="p-3 text-sm text-gray-600">${dateStr}</td>
+                        <td class="p-3 text-sm">${record.totalStudents || 0}</td>
+                        <td class="p-3">${previewHtml}</td>
+                        <td class="p-3 text-center space-x-1">
+                            <button class="bg-[#4682B4] hover:bg-[#36648b] text-white px-2 py-1 rounded text-sm transition shadow-sm mb-1 sm:mb-0" onclick="exportHistoricalData('${recordsJson}', '${fileDateStr}')" title="下載此筆紀錄">下載</button>
+                            <button class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm transition shadow-sm" onclick="deleteRecord(this, '${record.id}')" title="刪除此筆紀錄">刪除</button>
+                        </td>
+                    `;
+                    adminRecordsTableBody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error("載入歷史記錄失敗:", error);
+                adminRecordsTableBody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-red-500">載入失敗</td></tr>';
+            }
+        }
+
+        window.deleteRecord = async function(btn, docId) {
+            if (btn.textContent === "刪除") {
+                btn.textContent = "確定?";
+                btn.classList.remove('bg-red-500', 'hover:bg-red-600');
+                btn.classList.add('bg-red-700', 'hover:bg-red-800');
+                setTimeout(() => {
+                    if (btn && btn.textContent === "確定?") {
+                        btn.textContent = "刪除";
+                        btn.classList.add('bg-red-500', 'hover:bg-red-600');
+                        btn.classList.remove('bg-red-700', 'hover:bg-red-800');
+                    }
+                }, 3000);
+            } else if (btn.textContent === "確定?") {
+                btn.textContent = "刪除中...";
+                btn.disabled = true;
+                btn.classList.add('opacity-50');
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'running_records', docId));
+                    loadAdminRecords(); // 重新載入表格
+                } catch (error) {
+                    console.error("刪除失敗:", error);
+                    showModal("錯誤", "刪除失敗！");
+                    btn.textContent = "刪除";
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'bg-red-700', 'hover:bg-red-800');
+                    btn.classList.add('bg-red-500', 'hover:bg-red-600');
+                }
+            }
+        };
+
+        // 匯出歷史成績至 CSV
+        window.exportHistoricalData = function(recordsJsonStr, fileDateStr) {
+            try {
+                const recordsData = JSON.parse(recordsJsonStr);
+                if (Object.keys(recordsData).length === 0) {
+                    showModal("提示", "這筆紀錄沒有成績。");
+                    return;
+                }
+
+                let csvContent = "\uFEFF座號,記錄時間\n";
+                const sortedIds = Object.keys(recordsData).sort((a, b) => parseInt(a) - parseInt(b));
+
+                sortedIds.forEach(id => {
+                    const timesStr = recordsData[id].join('; ');
+                    csvContent += `${id},"${timesStr}"\n`;
+                });
+
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
+                
+                link.setAttribute("href", url);
+                link.setAttribute("download", `歷史跑步成績_${fileDateStr}.csv`);
+                link.style.visibility = 'hidden';
+                
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (error) {
+                console.error("匯出歷史紀錄失敗:", error);
+                showModal("錯誤", "無法匯出此紀錄。");
+            }
+        };
+
+        // Admin Modals Handlers
+        adminLoginBtn.addEventListener('click', () => {
+            adminPasswordInput.value = '';
+            adminLoginModal.classList.remove('hidden');
+            setTimeout(() => {
+                adminLoginModal.classList.remove('opacity-0');
+                adminLoginContent.classList.remove('scale-95');
+                adminPasswordInput.focus();
+            }, 10);
+        });
+
+        function closeAdminLoginModal() {
+            adminLoginModal.classList.add('opacity-0');
+            adminLoginContent.classList.add('scale-95');
+            setTimeout(() => { adminLoginModal.classList.add('hidden'); }, 300);
+        }
+
+        adminLoginCancelBtn.addEventListener('click', closeAdminLoginModal);
+
+        adminLoginConfirmBtn.addEventListener('click', () => {
+            if (adminPasswordInput.value === ADMIN_PASSWORD) {
+                closeAdminLoginModal();
+                openAdminDashboard();
+            } else {
+                showModal("登入失敗", "密碼錯誤！(預設密碼為: admin)");
+            }
+        });
+        
+        adminPasswordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') adminLoginConfirmBtn.click();
+        });
+
+        function openAdminDashboard() {
+            loadAdminRecords();
+            adminDashboardModal.classList.remove('hidden');
+            setTimeout(() => {
+                adminDashboardModal.classList.remove('opacity-0');
+                adminDashboardContent.classList.remove('scale-95');
+            }, 10);
+        }
+
+        adminDashboardCloseBtn.addEventListener('click', () => {
+            adminDashboardModal.classList.add('opacity-0');
+            adminDashboardContent.classList.add('scale-95');
+            setTimeout(() => { adminDashboardModal.classList.add('hidden'); }, 300);
+        });
+
+        saveTitleBtn.addEventListener('click', saveNewTitle);
+
+        // --- Logic & Functions ---
+
+        function formatTime(totalSeconds) {
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function getCurrentTimeString() {
+            return formatTime(secondsElapsed);
+        }
+
+        function showModal(title, message) {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modalContent.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function hideModal() {
+            modal.classList.add('opacity-0');
+            modalContent.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        modalCloseBtn.addEventListener('click', hideModal);
+
+        function generateStudentButtons() {
+            const count = parseInt(studentCountInput.value);
+            if (isNaN(count) || count < 1 || count > 100) {
+                showModal("錯誤", "請輸入 1 到 100 之間的有效人數。");
+                return;
+            }
+
+            currentStudentCount = count;
+            saveUserPreference(count);
+
+            studentButtonsContainer.innerHTML = ''; 
+            studentRecords = {}; 
+            updateTable(); 
+
+            instructionText.classList.add('hidden');
+
+            for (let i = 1; i <= count; i++) {
+                const btn = document.createElement('button');
+                // 按鈕加大 (w-16 h-16) 並把字體變大 (text-2xl)
+                btn.className = "w-16 h-16 rounded-full bg-[#f4e0c4] border-2 border-[#d3b48d] text-[#8B5A2B] font-bold text-2xl shadow-sm hover:bg-[#e6ceac] hover:shadow-md transition-all active:scale-95 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed";
+                btn.textContent = i;
+                btn.disabled = !isRunning; 
+                btn.dataset.studentId = i;
+                
+                btn.addEventListener('click', () => recordTime(i, btn));
+                studentButtonsContainer.appendChild(btn);
+            }
+            exportBtn.classList.remove('hidden');
+        }
+
+        function toggleTimer() {
+            if (currentStudentCount === 0) {
+                showModal("提示", "請先設定人數並產生按鈕！");
+                return;
+            }
+
+            if (isRunning) {
+                // Stop Timer
+                clearInterval(timerInterval);
+                isRunning = false;
+                
+                toggleTimerBtn.textContent = "計時開始";
+                toggleTimerBtn.classList.remove('bg-[#2E8B57]', 'hover:bg-[#236b43]');
+                toggleTimerBtn.classList.add('bg-[#CD5C5C]', 'hover:bg-[#b04a4a]');
+                
+                setStudentButtonsState(false);
+                
+                saveDataToFirebase();
+                
+                showModal("計時結束", "所有成績已結算並嘗試上傳至雲端資料庫。");
+
+            } else {
+                // Start Timer
+                secondsElapsed = 0;
+                timerDisplay.textContent = "00:00";
+                
+                if (Object.keys(studentRecords).length > 0) {
+                     studentRecords = {};
+                     updateTable();
+                     // 將所有按鈕顏色恢復原狀
+                     const buttons = studentButtonsContainer.querySelectorAll('button');
+                     buttons.forEach(btn => {
+                         btn.className = "w-16 h-16 rounded-full bg-[#f4e0c4] border-2 border-[#d3b48d] text-[#8B5A2B] font-bold text-2xl shadow-sm hover:bg-[#e6ceac] hover:shadow-md transition-all active:scale-95 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed";
+                     });
+                }
+
+                isRunning = true;
+                timerInterval = setInterval(() => {
+                    secondsElapsed++;
+                    timerDisplay.textContent = formatTime(secondsElapsed);
+                }, 1000);
+                
+                toggleTimerBtn.textContent = "計時結束";
+                toggleTimerBtn.classList.remove('bg-[#CD5C5C]', 'hover:bg-[#b04a4a]');
+                toggleTimerBtn.classList.add('bg-[#2E8B57]', 'hover:bg-[#236b43]');
+                
+                setStudentButtonsState(true);
+            }
+        }
+
+        function setStudentButtonsState(enabled) {
+            const buttons = studentButtonsContainer.querySelectorAll('button');
+            buttons.forEach(btn => {
+                btn.disabled = !enabled;
+            });
+        }
+
+        function recordTime(studentId, btnElement) {
+            if (!isRunning) return;
+
+            const timeStr = getCurrentTimeString();
+            
+            if (!studentRecords[studentId]) {
+                studentRecords[studentId] = [];
+            }
+            studentRecords[studentId].push(timeStr);
+
+            // 點擊後變更顏色並保持 (抹茶綠色背景，白色字體)
+            btnElement.classList.remove('bg-[#f4e0c4]', 'text-[#8B5A2B]', 'border-[#d3b48d]', 'hover:bg-[#e6ceac]');
+            btnElement.classList.add('bg-[#8fbc8f]', 'text-white', 'border-[#556b2f]', 'scale-110');
+            
+            // 短暫延遲後移除放大特效，但保留顏色
+            setTimeout(() => {
+                btnElement.classList.remove('scale-110');
+            }, 200);
+
+            updateTable();
+        }
+
+        function updateTable() {
+            if (Object.keys(studentRecords).length === 0) {
+                resultsTableBody.innerHTML = `<tr><td colspan="2" class="p-4 text-center text-gray-400">目前尚無記錄</td></tr>`;
+                return;
+            }
+
+            resultsTableBody.innerHTML = '';
+            
+            const sortedIds = Object.keys(studentRecords).sort((a, b) => parseInt(a) - parseInt(b));
+
+            sortedIds.forEach(id => {
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-gray-100 hover:bg-[#fdfbf2] transition-colors";
+                
+                const timesHtml = studentRecords[id].map(time => 
+                    `<span class="inline-block bg-[#e8e4c9] text-[#5c3a21] px-2 py-1 rounded text-sm mr-2 mb-1 shadow-sm font-mono">${time}</span>`
+                ).join('');
+
+                tr.innerHTML = `
+                    <td class="p-3 text-center font-bold text-[#8B5A2B] border-r border-gray-100">${id}</td>
+                    <td class="p-3">${timesHtml}</td>
+                `;
+                resultsTableBody.appendChild(tr);
+            });
+        }
+
+        async function saveDataToFirebase() {
+            if (!isFirebaseReady || !currentUser || Object.keys(studentRecords).length === 0) return;
+
+            try {
+                statusMessage.textContent = "正在上傳成績...";
+                const recordData = {
+                    date: new Date().toISOString(),
+                    timestamp: serverTimestamp(),
+                    totalStudents: currentStudentCount,
+                    records: studentRecords,
+                    uploaderId: currentUser.uid
+                };
+
+                const recordsRef = collection(db, 'artifacts', appId, 'public', 'data', 'running_records');
+                await addDoc(recordsRef, recordData);
+                
+                statusMessage.textContent = "已連線至雲端資料庫 (成績已儲存)";
+            } catch (error) {
+                console.error("儲存成績失敗:", error);
+                statusMessage.textContent = "成績上傳失敗";
+                showModal("錯誤", "無法上傳成績至資料庫，請檢查網路連線。");
+            }
+        }
+
+        function exportToCSV() {
+            if (Object.keys(studentRecords).length === 0) {
+                showModal("提示", "目前沒有成績可以下載。");
+                return;
+            }
+
+            // CSV Header (with BOM for Excel UTF-8 support)
+            let csvContent = "\uFEFF座號,記錄時間\n";
+            
+            const sortedIds = Object.keys(studentRecords).sort((a, b) => parseInt(a) - parseInt(b));
+
+            sortedIds.forEach(id => {
+                const timesStr = studentRecords[id].join('; ');
+                csvContent += `${id},"${timesStr}"\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            
+            const dateStr = new Date().toISOString().split('T')[0];
+            link.setAttribute("href", url);
+            link.setAttribute("download", `長安小鐵人計時成績_${dateStr}.csv`);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        let resetClickCount = 0;
+        let resetTimeout;
+        function resetAll() {
+            resetClickCount++;
+            
+            if (resetClickCount === 1) {
+                resetBtn.textContent = "再次點擊確認重置";
+                resetBtn.classList.remove('bg-gray-400', 'hover:bg-gray-500');
+                resetBtn.classList.add('bg-red-500', 'hover:bg-red-600');
+                
+                resetTimeout = setTimeout(() => {
+                    resetClickCount = 0;
+                    resetBtn.textContent = "重置所有資料";
+                    resetBtn.classList.add('bg-gray-400', 'hover:bg-gray-500');
+                    resetBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
+                }, 3000);
+            } else if (resetClickCount === 2) {
+                clearTimeout(resetTimeout);
+                
+                if (isRunning) {
+                    clearInterval(timerInterval);
+                    isRunning = false;
+                    toggleTimerBtn.textContent = "計時開始";
+                    toggleTimerBtn.classList.remove('bg-[#2E8B57]', 'hover:bg-[#236b43]');
+                    toggleTimerBtn.classList.add('bg-[#CD5C5C]', 'hover:bg-[#b04a4a]');
+                }
+
+                secondsElapsed = 0;
+                timerDisplay.textContent = "00:00";
+                studentRecords = {};
+                studentButtonsContainer.innerHTML = '';
+                currentStudentCount = 0;
+                instructionText.classList.remove('hidden');
+                exportBtn.classList.add('hidden');
+                updateTable();
+
+                resetClickCount = 0;
+                resetBtn.textContent = "重置所有資料";
+                resetBtn.classList.add('bg-gray-400', 'hover:bg-gray-500');
+                resetBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
+                
+                showModal("已重置", "所有畫面資料已清空。");
+            }
+        }
+
+        // Event Listeners
+        generateBtn.addEventListener('click', generateStudentButtons);
+        toggleTimerBtn.addEventListener('click', toggleTimer);
+        exportBtn.addEventListener('click', exportToCSV);
+        resetBtn.addEventListener('click', resetAll);
+
+        studentCountInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                generateStudentButtons();
+            }
+        });
+
+        // Initialize
+        window.addEventListener('DOMContentLoaded', () => {
+            initFirebase();
+        });
+
+    </script>
+</body>
+</html>
