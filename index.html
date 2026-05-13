@@ -165,7 +165,15 @@
         // Firebase Configuration (from environment variables)
         let firebaseConfig = {};
         try {
-            firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+         const firebaseConfig = {
+  apiKey: "AIzaSyB9B6dUshoaUsQdtoUBdvjV5b8wWFv_bN0",
+  authDomain: "runrun-d7ec5.firebaseapp.com",
+  projectId: "runrun-d7ec5",
+  storageBucket: "runrun-d7ec5.firebasestorage.app",
+  messagingSenderId: "845248945796",
+  appId: "1:845248945796:web:04dc1860afb29a47d66cd1"
+};
+
         } catch (e) {
             console.warn("無法解析 __firebase_config，使用本地模式。");
         }
