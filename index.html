@@ -144,7 +144,10 @@
 
                 <!-- 歷史成績管理 -->
                 <div>
-                    <h4 class="font-bold text-lg mb-2 text-[#8B5A2B] border-b-2 border-[#8B5A2B] inline-block pb-1">歷史成績管理與下載</h4>
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-2">
+                        <h4 class="font-bold text-lg text-[#8B5A2B] border-b-2 border-[#8B5A2B] inline-block pb-1 mb-2 sm:mb-0">歷史成績管理與下載</h4>
+                        <button id="downloadAllBtn" class="bg-[#2E8B57] hover:bg-[#236b43] text-white px-4 py-2 rounded-lg transition shadow-sm text-sm font-medium">一鍵下載所有歷史成績</button>
+                    </div>
                     <div class="overflow-x-auto bg-white rounded-lg shadow border border-gray-200 mt-2">
                         <table class="w-full text-left border-collapse min-w-[700px]">
                             <thead>
@@ -174,7 +177,7 @@
         // --- 1. 請在這裡貼上您的 Firebase 設定 (從 Firebase 後台複製) ---
         // ============================================================================
         const firebaseConfig = {
-          apiKey: "AIzaSyB9B6dUshoaUsQdtoUBdvjV5b8wWFv_bN0",
+           apiKey: "AIzaSyB9B6dUshoaUsQdtoUBdvjV5b8wWFv_bN0",
   authDomain: "runrun-d7ec5.firebaseapp.com",
   projectId: "runrun-d7ec5",
   storageBucket: "runrun-d7ec5.firebasestorage.app",
@@ -225,6 +228,7 @@
         const newAdminPasswordInput = document.getElementById('newAdminPasswordInput');
         const savePasswordBtn = document.getElementById('savePasswordBtn');
         const adminRecordsTableBody = document.getElementById('adminRecordsTableBody');
+        const downloadAllBtn = document.getElementById('downloadAllBtn'); // 新增：一鍵下載全部按鈕
 
         // State variables
         let timerInterval;
@@ -387,8 +391,8 @@
                         <td class="p-3 text-sm">${record.totalStudents || 0}</td>
                         <td class="p-3">${previewHtml}</td>
                         <td class="p-3 text-center space-x-2">
-                            <button class="bg-[#4682B4] hover:bg-[#36648b] text-white px-3 py-1 rounded text-sm transition shadow-sm" onclick="downloadHistoricalCSV('${record.id}')">下載</button>
-                            <button class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm transition shadow-sm" onclick="deleteRecord(this, '${record.id}')">刪除</button>
+                            <button class="bg-[#4682B4] hover:bg-[#36648b] text-white px-3 py-1 rounded text-sm transition shadow-sm whitespace-nowrap mb-1 sm:mb-0" onclick="downloadHistoricalCSV('${record.id}')">下載</button>
+                            <button class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm transition shadow-sm whitespace-nowrap" onclick="deleteRecord(this, '${record.id}')">刪除</button>
                         </td>
                     `;
                     adminRecordsTableBody.appendChild(tr);
@@ -423,11 +427,49 @@
             const link = document.createElement("a");
             const url = URL.createObjectURL(blob);
             link.setAttribute("href", url);
-            link.setAttribute("download", `長安小鐵人成績_${dateStr}.csv`);
+            link.setAttribute("download", `長安小鐵人單次成績_${dateStr}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         };
+
+        // 一鍵下載全部歷史成績
+        downloadAllBtn.addEventListener('click', () => {
+            if (allHistoricalRecords.length === 0) {
+                showModal("提示", "目前資料庫中沒有任何歷史成績記錄可以下載。");
+                return;
+            }
+
+            // 設計總表 CSV 的標題列
+            let csvContent = "\uFEFF測驗日期,測驗時間,座號,跑步成績\n";
+
+            // 確保資料是按照時間排序的（舊到新或新到舊都可以，這裡採用預設的載入順序）
+            allHistoricalRecords.forEach(record => {
+                const dateObj = new Date(record.date);
+                const dateStr = `${dateObj.getFullYear()}/${String(dateObj.getMonth()+1).padStart(2,'0')}/${String(dateObj.getDate()).padStart(2,'0')}`;
+                const timeStr = `${String(dateObj.getHours()).padStart(2,'0')}:${String(dateObj.getMinutes()).padStart(2,'0')}`;
+
+                if(record.records) {
+                    const sortedIds = Object.keys(record.records).sort((a, b) => parseInt(a) - parseInt(b));
+                    sortedIds.forEach(id => {
+                        // 如果該座號有多筆成績，用分號隔開
+                        const timesStr = record.records[id].join('; ');
+                        csvContent += `${dateStr},${timeStr},${id},"${timesStr}"\n`;
+                    });
+                }
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            const todayStr = new Date().toISOString().split('T')[0];
+            link.setAttribute("href", url);
+            link.setAttribute("download", `長安小鐵人_全部歷史成績總表_${todayStr}.csv`);
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
 
         window.deleteRecord = async function(btn, docId) {
             if (btn.textContent === "刪除") {
