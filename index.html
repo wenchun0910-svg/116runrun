@@ -177,7 +177,7 @@
         // --- 1. 請在這裡貼上您的 Firebase 設定 (從 Firebase 後台複製) ---
         // ============================================================================
         const firebaseConfig = {
-           apiKey: "AIzaSyB9B6dUshoaUsQdtoUBdvjV5b8wWFv_bN0",
+            apiKey: "AIzaSyB9B6dUshoaUsQdtoUBdvjV5b8wWFv_bN0",
   authDomain: "runrun-d7ec5.firebaseapp.com",
   projectId: "runrun-d7ec5",
   storageBucket: "runrun-d7ec5.firebasestorage.app",
@@ -433,38 +433,67 @@
             document.body.removeChild(link);
         };
 
-        // 一鍵下載全部歷史成績
+        // 一鍵下載全部歷史成績 (更新為老師指定的格式：行=座號，列=日期時間)
         downloadAllBtn.addEventListener('click', () => {
             if (allHistoricalRecords.length === 0) {
                 showModal("提示", "目前資料庫中沒有任何歷史成績記錄可以下載。");
                 return;
             }
 
-            // 設計總表 CSV 的標題列
-            let csvContent = "\uFEFF測驗日期,測驗時間,座號,跑步成績\n";
-
-            // 確保資料是按照時間排序的（舊到新或新到舊都可以，這裡採用預設的載入順序）
-            allHistoricalRecords.forEach(record => {
-                const dateObj = new Date(record.date);
-                const dateStr = `${dateObj.getFullYear()}/${String(dateObj.getMonth()+1).padStart(2,'0')}/${String(dateObj.getDate()).padStart(2,'0')}`;
-                const timeStr = `${String(dateObj.getHours()).padStart(2,'0')}:${String(dateObj.getMinutes()).padStart(2,'0')}`;
-
-                if(record.records) {
-                    const sortedIds = Object.keys(record.records).sort((a, b) => parseInt(a) - parseInt(b));
-                    sortedIds.forEach(id => {
-                        // 如果該座號有多筆成績，用分號隔開
-                        const timesStr = record.records[id].join('; ');
-                        csvContent += `${dateStr},${timeStr},${id},"${timesStr}"\n`;
+            // 1. 整理所有的欄位標題 (測驗時間)，並確保依照時間由舊到新排序
+            // slice() 複製陣列避免動到原始排序，然後反向排序(舊到新)
+            const sortedRecords = allHistoricalRecords.slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            // 找出全班最大座號，確保清單完整
+            let maxStudentId = 0;
+            sortedRecords.forEach(record => {
+                if (record.totalStudents && parseInt(record.totalStudents) > maxStudentId) {
+                    maxStudentId = parseInt(record.totalStudents);
+                }
+                if (record.records) {
+                    Object.keys(record.records).forEach(id => {
+                        if (parseInt(id) > maxStudentId) maxStudentId = parseInt(id);
                     });
                 }
             });
+
+            // 建立 CSV 標題行： 座號, 日期1, 日期2, ...
+            let headerRow = ["座號"];
+            sortedRecords.forEach(record => {
+                const dateObj = new Date(record.date);
+                // 格式化為： 2026-05-13-8:00
+                const formattedDateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2,'0')}-${String(dateObj.getDate()).padStart(2,'0')}-${String(dateObj.getHours()).padStart(2,'0')}:${String(dateObj.getMinutes()).padStart(2,'0')}`;
+                headerRow.push(formattedDateStr);
+            });
+
+            let csvContent = "\uFEFF" + headerRow.join(",") + "\n"; // BOM 加上標題行
+
+            // 2. 逐一產生每個座號的成績列
+            for (let i = 1; i <= maxStudentId; i++) {
+                let row = [`${i}`]; // 第一欄是座號
+                
+                // 逐次測驗檢查該座號是否有成績
+                sortedRecords.forEach(record => {
+                    if (record.records && record.records[i]) {
+                        // 有成績 (如果有多筆，用分號隔開)
+                        const timesStr = record.records[i].join('; ');
+                        // 用雙引號包起來，避免時間格式被 Excel 誤判或逗號切斷
+                        row.push(`"${timesStr}"`); 
+                    } else {
+                        // 沒成績填「未完成」
+                        row.push("未完成");
+                    }
+                });
+
+                csvContent += row.join(",") + "\n";
+            }
 
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             const url = URL.createObjectURL(blob);
             const todayStr = new Date().toISOString().split('T')[0];
             link.setAttribute("href", url);
-            link.setAttribute("download", `長安小鐵人_全部歷史成績總表_${todayStr}.csv`);
+            link.setAttribute("download", `長安小鐵人_全班總成績表_${todayStr}.csv`);
             
             document.body.appendChild(link);
             link.click();
